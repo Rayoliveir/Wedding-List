@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Guest Engine</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+  
+</head>
+<body>
+
+<div class="layout">
+    <nav class="navbar">
+        <div class="logo">
+            <i data-lucide="sparkles" style="color: var(--brand)"></i>
+            Wedding Guest Engine
+        </div>
+        <button onclick="gerarPDF()" class="btn-primary" style="background: white; color: var(--text-main); border: 1px solid var(--border)">
+            <i data-lucide="download"></i>
+            Exportar PDF
+        </button>
+    </nav>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-label">Total Cadastrados</span>
+            <span class="stat-value" id="stat-total">0</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Confirmados (Sim)</span>
+            <span class="stat-value" id="stat-sim" style="color: var(--success)">0</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Adultos</span>
+            <span class="stat-value" id="stat-adultos">0</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Crianças</span>
+            <span class="stat-value" id="stat-criancas">0</span>
+        </div>
+    </div>
+
+    <div class="tabs-nav">
+        <button class="tab-trigger active" onclick="switchTab('cadastro')">
+            <i data-lucide="users"></i> Lista
+        </button>
+        <button class="tab-trigger" onclick="switchTab('verificacao')">
+            <i data-lucide="shield-check"></i> Verificação
+        </button>
+        <button class="tab-trigger" onclick="switchTab('aprovados')">
+            <i data-lucide="clipboard-list"></i> Aprovados
+        </button>
+    </div>
+
+    <div id="cadastro" class="tab-content content-card">
+        <div class="input-row">
+            <input type="text" id="guestName" placeholder="Nome do convidado...">
+            <select id="guestCat">
+                <option value="Amigo">Amigo</option>
+                <option value="Família">Família</option>
+            </select>
+            <select id="guestAge">
+                <option value="Adulto">Adulto</option>
+                <option value="Criança">Criança</option>
+            </select>
+            <button class="btn-primary" onclick="addGuest()">
+                <i data-lucide="plus"></i> Adicionar
+            </button>
+        </div>
+        
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Relação</th>
+                        <th>Idade</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="guestList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="verificacao" class="tab-content content-card" style="display:none">
+        <div id="pendingList"></div>
+    </div>
+
+    <div id="aprovados" class="tab-content content-card" style="display:none">
+        <div class="table-wrap">
+            <table id="tabelaFinalPDF">
+                <thead><tr><th>Nome</th><th>Faixa Etária</th><th>Relação</th></tr></thead>
+                <tbody id="approvedList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="quiz-overlay">
+    <div class="quiz-modal">
+        <div id="q-header" style="text-transform: uppercase; font-size: 0.7rem; font-weight: 700; color: var(--brand); letter-spacing: 0.05em; margin-bottom: 8px;"></div>
+        <h2 id="q-name" style="margin: 0 0 16px 0; font-size: 1.5rem; letter-spacing: -0.02em;"></h2>
+        <p id="q-text" style="color: var(--text-muted); font-size: 1rem; line-height: 1.6;"></p>
+        <div class="quiz-actions">
+            <button class="btn-quiz btn-quiz-no" onclick="handleAnswer(false)">Não</button>
+            <button class="btn-quiz btn-quiz-yes" onclick="handleAnswer(true)">Sim, convidar</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="script.js"></script>
+</body>
+</html>
