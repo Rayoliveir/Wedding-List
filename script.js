@@ -1,4 +1,6 @@
-let guests = JSON.parse(localStorage.getItem('wedding_v6')) || [];
+let users = JSON.parse(localStorage.getItem('wedding_vault')) || {};
+let currentUser = null;
+let authMode = 'login';
 let currentIdx = null;
 let step = 0;
 
@@ -18,38 +20,96 @@ const logic = {
     ]
 };
 
+// --- AUTH ---
+function switchAuthMode(mode) {
+    authMode = mode;
+    document.getElementById('btn-login-tab').classList.toggle('active', mode === 'login');
+    document.getElementById('btn-register-tab').classList.toggle('active', mode === 'register');
+    document.getElementById('couple-input').style.display = mode === 'register' ? 'block' : 'none';
+    document.getElementById('auth-main-btn').innerText = mode === 'login' ? 'Entrar' : 'Criar Conta';
+    document.getElementById('auth-error').style.display = 'none';
+}
+
+function processAuth() {
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    const c = document.getElementById('couple-input').value.trim();
+    const err = document.getElementById('auth-error');
+
+    if (!u || !p) return;
+
+    if (authMode === 'register') {
+        if (users[u]) {
+            err.innerText = "Usuário já existe";
+            err.style.display = 'block';
+            return;
+        }
+        users[u] = { password: p, couple: c || "Casal", guests: [] };
+        localStorage.setItem('wedding_vault', JSON.stringify(users));
+        alert("Conta criada! Faça login.");
+        switchAuthMode('login');
+    } else {
+        if (users[u] && users[u].password === p) {
+            currentUser = u;
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('couple-title').innerText = users[u].couple;
+            render();
+        } else {
+            err.innerText = "Usuário ou senha inválidos";
+            err.style.display = 'block';
+        }
+    }
+}
+
+function logout() {
+    currentUser = null;
+    document.getElementById('auth-screen').style.display = 'grid';
+    document.getElementById('main-app').style.display = 'none';
+}
+
+// --- CORE ---
+function update() {
+    users[currentUser].guests = users[currentUser].guests; // Mantém referência
+    localStorage.setItem('wedding_vault', JSON.stringify(users));
+    render();
+}
+
 function addGuest() {
-    const nameInput = document.getElementById('guestName');
-    const name = nameInput.value;
-    const cat = document.getElementById('guestCat').value;
-    const age = document.getElementById('guestAge').value;
+    const nInput = document.getElementById('guestName');
+    const name = nInput.value;
     if (!name) return;
-    guests.push({ name, cat, age, status: 'Pendente' });
-    nameInput.value = '';
+    users[currentUser].guests.push({
+        name,
+        cat: document.getElementById('guestCat').value,
+        age: document.getElementById('guestAge').value,
+        status: 'Pendente'
+    });
+    nInput.value = '';
     update();
 }
 
 function render() {
+    if (!currentUser) return;
     const list = document.getElementById('guestList');
     const pending = document.getElementById('pendingList');
     const approved = document.getElementById('approvedList');
+    const gList = users[currentUser].guests;
+
     list.innerHTML = ''; pending.innerHTML = ''; approved.innerHTML = '';
+    let counts = { total: 0, sim: 0, ad: 0, ki: 0 };
 
-    let counts = { total: 0, sim: 0, adultos: 0, criancas: 0 };
-
-    guests.forEach((g, i) => {
+    gList.forEach((g, i) => {
         counts.total++;
-        const statusClass = g.status === 'Convidar' ? 'badge-success' : (g.status === 'Não Convidar' ? 'badge-danger' : 'badge-pending');
+        const sBadge = g.status === 'Convidar' ? 'badge-success' : (g.status === 'Não Convidar' ? 'badge-danger' : 'badge-pending');
 
         list.innerHTML += `<tr>
-                <td><span style="font-weight: 500">${g.name}</span></td>
+                <td><strong>${g.name}</strong></td>
                 <td>${g.cat}</td>
                 <td>${g.age}</td>
-                <td><span class="badge ${statusClass}">${g.status}</span></td>
+                <td><span class="badge ${sBadge}">${g.status}</span></td>
                 <td style="text-align: right">
-                    <button onclick="deleteGuest(${i})" style="color: var(--text-muted); border: none; background: transparent; cursor: pointer">
-                        <i data-lucide="trash-2" style="width: 18px"></i>
-                    </button>
+                    <button onclick="deleteGuest(${i})" style="border:none; background:none; cursor:pointer; color:var(--text-muted)"><i data-lucide="trash-2" style="width:16px"></i></button>
                 </td>
             </tr>`;
 
@@ -58,22 +118,22 @@ function render() {
                 <div class="validation-item">
                     <div>
                         <div style="font-weight: 600">${g.name}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted)">${g.cat} • ${g.age}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted)">${g.cat}</div>
                     </div>
-                    <button class="btn-primary" onclick="startQuiz(${i})">Analisar</button>
+                    <button class="btn-primary" onclick="startQuiz(${i})">Validar</button>
                 </div>`;
         }
         if (g.status === 'Convidar') {
             counts.sim++;
-            if (g.age === 'Adulto') counts.adultos++; else counts.criancas++;
+            g.age === 'Adulto' ? counts.ad++ : counts.ki++;
             approved.innerHTML += `<tr><td>${g.name}</td><td>${g.age}</td><td>${g.cat}</td></tr>`;
         }
     });
 
     document.getElementById('stat-total').innerText = counts.total;
     document.getElementById('stat-sim').innerText = counts.sim;
-    document.getElementById('stat-adultos').innerText = counts.adultos;
-    document.getElementById('stat-criancas').innerText = counts.criancas;
+    document.getElementById('stat-adultos').innerText = counts.ad;
+    document.getElementById('stat-criancas').innerText = counts.ki;
     lucide.createIcons();
 }
 
@@ -84,30 +144,26 @@ function switchTab(id) {
     event.currentTarget.classList.add('active');
 }
 
-// Lógica compartilhada
-function update() { localStorage.setItem('wedding_v6', JSON.stringify(guests)); render(); }
-function deleteGuest(i) { if (confirm('Remover convidado?')) { guests.splice(i, 1); update(); } }
 function startQuiz(i) { currentIdx = i; step = 0; document.getElementById('quiz-overlay').style.display = 'grid'; showQuestion(); }
 function showQuestion() {
-    const g = guests[currentIdx];
-    document.getElementById('q-header').innerText = g.cat + " • " + g.age;
+    const g = users[currentUser].guests[currentIdx];
+    document.getElementById('q-header').innerText = g.cat;
     document.getElementById('q-name').innerText = g.name;
     document.getElementById('q-text').innerText = logic[g.cat][step].q;
 }
 function handleAnswer(ans) {
-    const move = ans ? logic[guests[currentIdx].cat][step].s : logic[guests[currentIdx].cat][step].n;
-    if (move === "S") finish("Convidar");
-    else if (move === "N") finish("Não Convidar");
-    else { step = move; showQuestion(); }
+    const m = ans ? logic[users[currentUser].guests[currentIdx].cat][step].s : logic[users[currentUser].guests[currentIdx].cat][step].n;
+    if (m === "S") finish("Convidar"); else if (m === "N") finish("Não Convidar"); else { step = m; showQuestion(); }
 }
-function finish(res) { document.getElementById('quiz-overlay').style.display = 'none'; guests[currentIdx].status = res; update(); }
+function finish(res) { document.getElementById('quiz-overlay').style.display = 'none'; users[currentUser].guests[currentIdx].status = res; update(); }
+function deleteGuest(i) { if (confirm('Excluir?')) { users[currentUser].guests.splice(i, 1); update(); } }
+
 function gerarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.text("Lista Final de Convidados", 14, 20);
+    doc.text("Lista de Convidados - " + users[currentUser].couple, 14, 20);
     doc.autoTable({ html: '#tabelaFinalPDF', startY: 30, headStyles: { fillColor: [99, 102, 241] } });
     doc.save("lista-casamento.pdf");
 }
 
-render();
+lucide.createIcons();
